@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shortsmaker"
+version = "0.1.0"
+description = "MVP tool for rendering narrated, captioned 16:9 story videos."
+requires-python = ">=3.11"
+
+[project.scripts]
+shortsmaker = "shortsmaker.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
