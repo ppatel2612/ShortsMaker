@@ -52,6 +52,48 @@ def build_render_command(
         f"crop={width}:{height},"
         f"subtitles='{ffmpeg_subtitle_path(subtitles_path)}'"
     )
+    command = [ffmpeg, "-y"]
+    if loop_background:
+        command.extend(["-stream_loop", "-1"])
+    if background_start_seconds > 0:
+        command.extend(["-ss", format_seconds(background_start_seconds)])
+    command.extend(
+        [
+            "-i",
+            str(background_path),
+            "-i",
+            str(narration_path),
+            "-vf",
+            vf,
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+        ]
+    )
+    if duration_seconds is not None:
+        command.extend(["-t", format_seconds(duration_seconds)])
+    command.extend(
+        [
+            "-shortest",
+            "-r",
+            "30",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-movflags",
+            "+faststart",
+            str(output_path),
+        ]
+    )
+    return command
     return [
         ffmpeg,
         "-y",
@@ -93,10 +135,34 @@ def render_video(
     output_path: Path,
     width: int = 1920,
     height: int = 1080,
+    duration_seconds: float | None = None,
+    background_start_seconds: float = 0.0,
+    loop_background: bool = True,
 ) -> RenderResult:
     """Render the final video using FFmpeg."""
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    command = build_render_command(
+        background_path,
+        narration_path,
+        subtitles_path,
+        output_path,
+        width,
+        height,
+        duration_seconds,
+        background_start_seconds,
+        loop_background,
+    )
+    subprocess.run(command, check=True)
+    return RenderResult(
+        output_path=output_path,
+        command=command,
+        width=width,
+        height=height,
+        duration_seconds=duration_seconds,
+        background_start_seconds=background_start_seconds,
+        loop_background=loop_background,
+    )
     command = build_render_command(background_path, narration_path, subtitles_path, output_path, width, height)
     subprocess.run(command, check=True)
     return RenderResult(output_path=output_path, command=command, width=width, height=height)

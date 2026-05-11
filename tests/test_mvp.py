@@ -1,3 +1,14 @@
+import random
+from pathlib import Path
+
+import shortsmaker.renderer as renderer
+from shortsmaker.captions import build_captions, split_caption_chunks, write_ass, write_srt
+from shortsmaker.renderer import (
+    build_render_command,
+    choose_background_start,
+    ffmpeg_subtitle_path,
+    should_loop_background,
+)
 from pathlib import Path
 
 from shortsmaker.captions import build_captions, split_caption_chunks, write_ass, write_srt
@@ -42,3 +53,52 @@ def test_subtitle_path_is_escaped_for_ffmpeg() -> None:
 
     assert r"\:" in escaped
     assert r"\'" in escaped
+
+
+def test_random_background_start_stays_inside_available_clip() -> None:
+    start = choose_background_start(120.0, 30.0, randomize=True, rng=random.Random(4))
+
+    assert 0.0 <= start <= 90.0
+    assert choose_background_start(20.0, 30.0, randomize=True) == 0.0
+    assert choose_background_start(120.0, 30.0, randomize=False) == 0.0
+
+
+def test_background_looping_only_when_video_is_shorter_or_unknown() -> None:
+    assert should_loop_background(None, 30.0) is True
+    assert should_loop_background(20.0, 30.0) is True
+    assert should_loop_background(120.0, 30.0) is False
+
+
+def test_render_command_cuts_to_audio_and_seeks_random_background(monkeypatch) -> None:
+    monkeypatch.setattr(renderer, "require_ffmpeg", lambda: "ffmpeg")
+
+    command = build_render_command(
+        Path("background.mp4"),
+        Path("narration.wav"),
+        Path("captions.ass"),
+        Path("out.mp4"),
+        duration_seconds=12.3456,
+        background_start_seconds=42.0,
+        loop_background=False,
+    )
+
+    assert "-stream_loop" not in command
+    assert command[command.index("-ss") + 1] == "42.000"
+    assert command[command.index("-t") + 1] == "12.346"
+    assert command[-1] == "out.mp4"
+
+
+def test_render_command_loops_short_background(monkeypatch) -> None:
+    monkeypatch.setattr(renderer, "require_ffmpeg", lambda: "ffmpeg")
+
+    command = build_render_command(
+        Path("background.mp4"),
+        Path("narration.wav"),
+        Path("captions.ass"),
+        Path("out.mp4"),
+        duration_seconds=45.0,
+        loop_background=True,
+    )
+
+    assert command[command.index("-stream_loop") + 1] == "-1"
+    assert command[command.index("-t") + 1] == "45.000"
