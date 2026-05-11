@@ -12,13 +12,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .captions import build_captions, estimate_duration_seconds, write_ass, write_srt
-from .renderer import (
-    choose_background_start,
-    media_duration_seconds,
-    render_video,
-    should_loop_background,
-    write_manifest,
-)
+from .renderer import render_video, write_manifest
 from .tts import synthesize_to_wav, wav_duration_seconds
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,12 +56,6 @@ INDEX_HTML = """<!doctype html>
       <option value="say">macOS say</option>
       <option value="silent">Silent fallback</option>
     </select>
-
-    <label>
-      <input type="checkbox" name="random_background" value="1" checked>
-      Randomly choose a background clip that matches the narration length
-    </label>
-    <p class="note">If the background is shorter than the narration, FFmpeg loops it. If it is longer, the output is cut to the narration length.</p>
 
     <button type="submit">Render 16:9 video</button>
   </form>
@@ -140,28 +128,12 @@ class ShortsMakerHandler(BaseHTTPRequestHandler):
             provider_voice = "silent" if voice == "silent" else voice
             narration_path, provider = synthesize_to_wav(story, narration_path, provider_voice)
 
-        duration = (
-            wav_duration_seconds(narration_path)
-            or media_duration_seconds(narration_path)
-            or estimate_duration_seconds(story)
-        )
-        background_duration = media_duration_seconds(background_path)
-        random_background = form.getfirst("random_background") == "1"
-        background_start = choose_background_start(background_duration, duration, random_background)
-        loop_background = should_loop_background(background_duration, duration)
+        duration = wav_duration_seconds(narration_path) or estimate_duration_seconds(story)
         captions = build_captions(story, duration)
         srt_path = write_srt(captions, project_dir / "captions.srt")
         ass_path = write_ass(captions, project_dir / "captions.ass")
         output_path = project_dir / "shortsmaker-16x9.mp4"
-        result = render_video(
-            background_path,
-            narration_path,
-            ass_path,
-            output_path,
-            duration_seconds=duration,
-            background_start_seconds=background_start,
-            loop_background=loop_background,
-        )
+        result = render_video(background_path, narration_path, ass_path, output_path)
         write_manifest(
             project_dir / "manifest.json",
             {
@@ -171,10 +143,6 @@ class ShortsMakerHandler(BaseHTTPRequestHandler):
                 "height": 1080,
                 "tts_provider": provider,
                 "duration_seconds": duration,
-                "background_duration_seconds": background_duration,
-                "background_start_seconds": background_start,
-                "background_randomized": random_background,
-                "background_looped": loop_background,
                 "background": str(background_path),
                 "narration": str(narration_path),
                 "captions_srt": str(srt_path),
@@ -189,7 +157,6 @@ class ShortsMakerHandler(BaseHTTPRequestHandler):
             <p>Your 16:9 video is ready.</p>
             <p><a href="/download?id={project_id}" download>Download MP4</a></p>
             <p>TTS provider: {html.escape(provider)}</p>
-            <p>Background starts at {background_start:.2f}s and the output is {duration:.2f}s long.</p>
             <p><a href="/">Render another</a></p>
             </body></html>"""
         )

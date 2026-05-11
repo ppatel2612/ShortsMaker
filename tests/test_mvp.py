@@ -9,6 +9,10 @@ from shortsmaker.renderer import (
     ffmpeg_subtitle_path,
     should_loop_background,
 )
+from pathlib import Path
+
+from shortsmaker.captions import build_captions, split_caption_chunks, write_ass, write_srt
+from shortsmaker.renderer import ffmpeg_subtitle_path
 from shortsmaker.tts import synthesize_to_wav, wav_duration_seconds
 
 

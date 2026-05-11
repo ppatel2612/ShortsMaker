@@ -1,3 +1,2 @@
 # The MVP web app uses Python's standard library.
 # Runtime rendering requires the ffmpeg executable to be installed on PATH.
-# Random long-background clip selection uses ffprobe when available (usually bundled with FFmpeg).
