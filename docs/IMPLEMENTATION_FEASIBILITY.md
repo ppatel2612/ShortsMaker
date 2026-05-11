@@ -7,7 +7,7 @@ Yes. A tool that turns a story text input into a captioned, narrated, 16:9 short
 ## Target output
 
 - 16:9 MP4 video, usually 1920x1080.
-- User-provided background video, randomly clipped when longer than narration, looped when shorter, trimmed, cropped, and optionally blurred or dimmed.
+- User-provided background video, looped, trimmed, cropped, and optionally blurred or dimmed.
 - Narration audio generated from the story text.
 - Burned-in captions styled for Shorts/TikTok readability.
 - Optional variants using different narrator voices, caption themes, and background clips.
@@ -22,7 +22,7 @@ The MVP should avoid upload automation and focus on producing a ready-to-post MP
 3. **Text processing**: clean Reddit formatting, split into sentence/phrase chunks, and optionally create multiple parts for long stories.
 4. **TTS generation**: synthesize WAV narration through a provider interface.
 5. **Caption timing**: create sentence-level captions first; add word-level highlighting later.
-6. **Video render**: crop/scale the background to 16:9, randomly seek into long background videos, trim output to narration duration, mix narration with optional background audio/music, burn captions, and export MP4.
+6. **Video render**: crop/scale the background to 16:9, mix narration with optional background audio/music, burn captions, and export MP4.
 7. **Artifacts**: save audio, caption files, render settings, and final video under an output folder.
 
 ## Reference architecture
@@ -77,7 +77,6 @@ Background video + render preset ------------------------------^
 - Silence trimming and loudness normalization for narration.
 - Automatic splitting into multiple parts when estimated duration exceeds the target platform length.
 - Caption timing guardrails so captions do not flash too quickly or cover important visual regions.
-- Background clip selection that chooses a random valid start time when the source video is longer than the narration.
 - Optional background music ducking under narration.
 
 ### Compliance and safety requirements
@@ -95,7 +94,7 @@ Background video + render preset ------------------------------^
 - Create a command such as `shortsmaker render --story story.txt --background bg.mp4 --voice narrator_a`.
 - Generate TTS audio from cleaned text.
 - Produce sentence-level SRT/ASS captions.
-- Render a 1920x1080 MP4 with FFmpeg, cutting the output to the audio duration and optionally selecting a random clip from long background footage.
+- Render a 1920x1080 MP4 with FFmpeg.
 - Save a render manifest and intermediate files.
 
 ### Phase 2: Quality improvements

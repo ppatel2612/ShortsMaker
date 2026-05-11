@@ -9,6 +9,10 @@ from shortsmaker.renderer import (
     ffmpeg_subtitle_path,
     should_loop_background,
 )
+from pathlib import Path
+
+from shortsmaker.captions import build_captions, split_caption_chunks, write_ass, write_srt
+from shortsmaker.renderer import ffmpeg_subtitle_path
 from shortsmaker.tts import synthesize_to_wav, wav_duration_seconds
 
 
@@ -98,50 +102,3 @@ def test_render_command_loops_short_background(monkeypatch) -> None:
 
     assert command[command.index("-stream_loop") + 1] == "-1"
     assert command[command.index("-t") + 1] == "45.000"
-
-
-def test_render_video_passes_trim_options_as_keywords(monkeypatch, tmp_path: Path) -> None:
-    calls = {}
-
-    def fake_build_render_command(
-        background_path: Path,
-        narration_path: Path,
-        subtitles_path: Path,
-        output_path: Path,
-        width: int = 1920,
-        height: int = 1080,
-        *,
-        duration_seconds: float | None = None,
-        background_start_seconds: float = 0.0,
-        loop_background: bool = True,
-    ) -> list[str]:
-        calls["duration_seconds"] = duration_seconds
-        calls["background_start_seconds"] = background_start_seconds
-        calls["loop_background"] = loop_background
-        calls["width"] = width
-        calls["height"] = height
-        return ["echo", "render"]
-
-    monkeypatch.setattr(renderer, "build_render_command", fake_build_render_command)
-    monkeypatch.setattr(renderer.subprocess, "run", lambda command, check: None)
-
-    result = renderer.render_video(
-        Path("background.mp4"),
-        Path("narration.wav"),
-        Path("captions.ass"),
-        tmp_path / "out.mp4",
-        duration_seconds=15.0,
-        background_start_seconds=5.0,
-        loop_background=False,
-    )
-
-    assert calls == {
-        "duration_seconds": 15.0,
-        "background_start_seconds": 5.0,
-        "loop_background": False,
-        "width": 1920,
-        "height": 1080,
-    }
-    assert result.duration_seconds == 15.0
-    assert result.background_start_seconds == 5.0
-    assert result.loop_background is False
